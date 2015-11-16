@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html ng-app="app">
+    <head>
+        <title>Demo</title>
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+        <link rel="stylesheet" href="css/style.css">
+        <link rel="stylesheet" href="http://netdna.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css">
+        <script src="js/angular.js"></script>
+        <script src="js/angular-file-model.js"></script>
+        <script src="js/appController.js"></script>
+        <script src="js/app.js"></script>
+    </head>
+    <body ng-controller="appCtrl">
+        <div class="container">
+            <h1>Edit Decision List Demo</h1>
+            <hr class="soften"/>
+            <div class="row fileupload-buttonbar">
+                <div class="col-lg-7">
+                    <span class="btn btn-success fileinput-button">
+                        <i class="glyphicon glyphicon-plus"></i>
+                        <span>Select files...</span>
+                        <input type="file" multiple file-model="file">
+                    </span>
+                </div>
+            </div>
+            <br>
+            <table role="presentation" class="table table-hover table-striped">
+               <tbody>
+                    <tr ng-repeat="file in files" class="row">
+                        <td class="col-md-6">
+                            <div class="preview" file-preview ng-model="file"></div>
+                        </td>
+                        <td class="col-md-6 text-right">
+                            <button class="btn btn-primary btn-xs" ng-click="file.play()">
+                                <i class="glyphicon glyphicon-upload"></i>
+                                <span> Play</span>
+                            </button>
+                            <button class="btn btn-danger btn-xs" ng-click="file.pause()">
+                                <i class="glyphicon glyphicon-pause"></i>
+                                <span> Pause</span>
+                            </button>
+                            <button class="btn btn-info btn-xs" ng-click="file.markIn()">
+                                <i class="glyphicon glyphicon-repeat"></i>
+                                <span> MarkIn</span>
+                            </button>
+                            <button class="btn btn-info btn-xs" ng-click="file.markOut()">
+                                <i class="glyphicon glyphicon-repeat"></i>
+                                <span> MarkOut</span>
+                            </button>
+                            <button class="btn btn-xs" ng-click="file.cancel()">
+                                <i class="glyphicon glyphicon-remove"></i>
+                                <span> Remove</span>
+                            </button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+            <div class="panel panel-warning">
+                <div class="panel-heading">
+                    <h3 class="panel-title">Note</h3>
+                </div>
+                <div class="panel-body">
+                    Drag And Drop your file here
+                </div>
+            </div>
+            <!-- player cannot coexist with angurlar
+            <div id="playerContainer">
+                <object id="player" type="application/x-chimera-plugin" width="600" height="338">
+                    <param name="mrl" value="http://192.168.10.52/Upload/media/1.flv"/>
+                    <param name="windowless" value="false" />
+                </object>
+            </div>
+            -->
+        </div>
+   </body>
+</html>

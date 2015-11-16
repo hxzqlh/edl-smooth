@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Edit Decision List Demo</title>
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+        <link rel="stylesheet" href="css/style.css">
+        <link rel="stylesheet" href="http://netdna.bootstrapcdn.com/bootstrap/2.3.2/css/bootstrap.min.css">
+    </head>
+    <body class="container text-center" style="width:1024px;">
+        <br>
+        <div class="row text-center" id="videoContainer">
+            <video id="player" width="1024px" height="512px" style="background:black"></video>
+        </div>
+        <br>
+        <div class="row" style="position:relative;width:820px;margin:auto;">
+            <div class="progress">
+                <div class="bar" style="width:0%;"></div>
+            </div>
+           <div id="rangeBar" class="hide progress progress-warning" style="position:absolute;left:0px;top:10px;width:100%;height:10px;">
+                <div  class="bar" style="width:100%;"></div>
+            </div>
+             <div id="progressInRange" class="hide progress progress-success" style="position:absolute;left:0px;top:10px;width:0%;height:10px;">
+                <div  class="bar" style="width:100%;"></div>
+            </div>
+ 
+            <div id="drag1" class="hide" style="position:absolute;top:-2px;width:10px;height:30px;background:green"></div>
+            <div id="drag2" class="hide" style="position:absolute;top:-2px;right:-2px;width:10px;height:30px;background:red"></div>
+        </div>
+        <br>
+        <div class="row text-center" style="position:relative;width:820px;margin:auto;">
+            <div id="timeModal" class="modal hide fade text-left" role="dialog" aria-hidden="true">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+                    <h3>Error</h3>
+                </div>
+                <div class="modal-body">
+                    <p>Some error info</p>        
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-primary" data-dismiss="modal" aria-hidden="true">OK</button>
+                </div>
+            </div>
+ 
+            <div class="span4 input-append">
+                <span class="add-on">Start From</span>
+                <input class="span2" id="timeStart" type="text" placeholder="00:00:00">
+            </div>
+            <div class="span4 input-append">
+                <input class="span2 text-right" id="timeEnd" type="text" placeholder="00:00:00">
+                <span class="add-on">End To</span>
+            </div>
+        </div>
+        <br>
+        <div style="position:relative;width:820px;margin:auto;">
+            <div class="progress">
+                <div class="bar" style="width:0%;"></div>
+            </div>
+            <div id="drag3" class="hide" style="position:absolute;top:-2px;width:10px;height:30px;background:grey"></div>
+        </div>
+        <br>
+        <div class="row text-center" style="width:880px; margin:auto;">
+            <div class="span2 fileupload-buttonbar" style="width: 80px">
+                <span class="btn btn-success fileinput-button">
+                    <i class="icon-plus"></i>
+                    <span> Open</span>
+                    <input id="input" type="file" multiple>
+                </span>
+            </div>
+            <div class="span4" style="position:relative;width:180px;">
+                <button class="btn btn-primary" onClick="backward()">
+                    <span class="icon-fast-backward"></span>
+                </button>
+                <button class="btn btn-danger" onClick="togglePlay()">
+                    <span class="icon-play"></span>
+                </button>
+                <button class="btn btn-primary" onclick="forward()">
+                    <span class="icon-fast-forward"></span>
+                </button>
+                <button class="btn btn-default" onclick="fullscreen()">
+                    <span class="icon-fullscreen"></span>
+                </button>
+                <div id="speedOver" class="hide" style="position: absolute; top: 40px; left:20px;">
+                    <span class="badge badge-info">Speed: x1</span>
+                </div>
+            </div>
+            <div class="span3">
+                <button id="tag" class="btn btn-warning">
+                    <span class="icon-tag"></span>
+                    <span> Tag</span>
+                </button>
+                <button id="screenShot" class="btn btn-success hide">
+                    <span class="icon-picture"></span>
+                    <span> Screenshot</span>
+                </button>
+                <button id="export" class="btn btn-danger">
+                    <span class="icon-share"></span>
+                    <span> Export</span>
+                </button>
+            </div>
+        </div><!-- row -->
+        <div id="videoFrameResults" style="display:none;position:relative;top:20px;margin:0 80px 0 80px;">
+            <table id="videoFrameTable" class="table table-striped table-bordered">
+                <caption class="lead">Captured Time Codes</caption>
+                <thead>
+                    <th>ID</th>
+                    <th>SMPTE Time Code</th>
+                    <th>Decision</th>
+                    <th width="40%">Tag Info</th>
+                    <th>Action</th>
+                </thead>
+                <tbody>
+                    <tr style="display:none;">
+                        <td>0</td>
+                        <td>00:00:00:00</td>
+                        <td></td>
+                        <td></td>
+                        <td>
+                            <button class="btn btn-info">
+                                <span class="icon-edit"></span>
+                            </button>
+                            <button class="btn btn-danger">
+                                <span class="icon-remove"></span>
+                            </button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <div id="videoFrameScreenshots" style="display:none;position:relative;top:30px;margin:0 100px 0 100px;">
+            <ul class="thumbnails"></ul>
+        </div>
+        <!-- tagModal -->
+        <div id="tagModal" class="modal hide fade text-left" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+          <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+            <h3 id="myModalLabel">Tag info</h3>
+          </div>
+          <div class="modal-body">
+              <input type="text" class="span4" name="remark" placeholder="Remark information about this timestamp">
+              <label class="radio">
+                  <input type="radio" id="decision_1" name="decision" value="1"/>Skip From This Timestamp 
+              </label>
+              <label class="radio">
+                  <input type="radio" id="decision_2" name="decision" value="2"/>Skip To This Timestamp
+              </label>
+              <label class="radio">
+                  <input type="radio" id="decision_3" name="decision" value="3"/>Mute From This Timestamp
+              </label>
+              <label class="radio">
+                  <input type="radio" id="decision_4" name="decision" value="4"/>Mute To This Timestamp
+              </label>
+          </div>
+          <div class="modal-footer">
+            <button id="saveTag" class="btn btn-primary">Save</button>
+            <button id="cancel" class="btn" data-dismiss="modal" aria-hidden="true">Cancel</button>
+          </div>
+        </div>
+        <!-- confirmModal -->
+        <div id="confirmModal" class="modal hide fade" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+                <h3 id="myModalLabel">Warning</h3>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure to remove this tag?</p>        
+            </div>
+            <div class="modal-footer">
+              <button id="confirmRemove" class="btn btn-primary">OK</button>
+              <button id="cancelRemove" class="btn" data-dismiss="modal" aria-hidden="true">Cancel</button>
+            </div>
+        </div>
+ 
+        <input style="display:none;" id="saveEdl" type="file">
+		<script src="js/jquery.min.js"></script>
+        <script src="js/jquery-ui.js"></script>
+        <script src="js/bootstrap.min.js"></script>
+		<script src="js/FileSaver.js"></script>
+		<script src="js/jquery.hotkeys.js"></script>
+		<script src="js/index.js"></script>
+   </body>
+</html>

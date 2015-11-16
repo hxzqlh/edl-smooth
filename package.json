@@ -1,0 +1,13 @@
+{
+    "name": "EDL Demo",
+    "version": "0.0.1",
+    "main": "app://host/index.html",
+    "window": {
+        "title": "EDL Demo",
+        "toolbar": true,
+        "frame": true,
+        "position": "center",
+        "width": 1200,
+        "height": 800
+    }
+}
