@@ -58,10 +58,10 @@ player.onloadeddata = function () {
     range.end = player.duration;
 
     $('#timeStart').val('00:00:00');
-    $('#timeEnd').val(num2hhmmss(player.duration));
+    $('#timeEnd').val(time2hhmmss(player.duration).substr(0,8));
 
     $('#timeStart').prop ('defaultValue', '00:00:00');
-    $('#timeEnd').prop ('defaultValue', num2hhmmss(player.duration));
+    $('#timeEnd').prop ('defaultValue', time2hhmmss(player.duration).substr(0,8));
 
     $('#drag1').css('left', 0).show();
     $('#drag2').css('left', $('#drag2').parent().width() - $('#drag2').width()).show();
@@ -77,10 +77,10 @@ player.ontimeupdate = function() {
     if (player.currentTime >= range.end)
         player.pause();
 
-    updateProgrssBar ();
+    updateProgress ();
 };
 
-function updateProgrssBar () {
+function updateProgress () {
     /*
                     drag1                             drag2
                     |                                 |
@@ -120,6 +120,9 @@ function updateProgrssBar () {
     var widthInRange = rangeWidth * (player.currentTime - range.start) / (range.end - range.start);
     $('#progressInRange').css('left', $('#drag1').position().left);
     $('#progressInRange').css('width', widthInRange);
+
+    //currentTime
+    $('#timeNow').val(time2hhmmss(player.currentTime));
 }
 
 player.onpause = function() { 
@@ -265,7 +268,7 @@ $("#saveTag").bind("click", function(e) {
     decision = !decision ? 0: decision;
  
     if (modal_type === "new") {
-        var timeStamp = num2hhmmss(player.currentTime);
+        var timeStamp = time2hhmmss(player.currentTime);
         var c = $("#videoFrameTable tbody tr:last").clone().show();
         $("#videoFrameTable tbody").append(c);
 
@@ -403,11 +406,14 @@ function isValidHHmmss (str) {
     return true;
 }
 
-function num2hhmmss(str) {
-    var sec_num = parseInt(str, 10);
-    var hours   = Math.floor(sec_num / 3600);
-    var minutes = Math.floor((sec_num - (hours * 3600)) / 60);
-    var seconds = sec_num - (hours * 3600) - (minutes * 60);
+function time2hhmmss(timeCodec) {
+    timeCodec = timeCodec.toFixed(2);
+    var arr = ('' + timeCodec).split(".");
+
+    var total_secs = parseInt(arr[0], 10);
+    var hours   = Math.floor(total_secs / 3600);
+    var minutes = Math.floor((total_secs - (hours * 3600)) / 60);
+    var seconds = total_secs - (hours * 3600) - (minutes * 60);
 
     if (hours   < 10) {
         hours   = "0" + hours;
@@ -418,8 +424,18 @@ function num2hhmmss(str) {
     if (seconds < 10) {
         seconds = "0" + seconds;
     }
-    var time = hours + ':' + minutes + ':' + seconds;
-    return time;
+
+    //"12.03"
+    var hhmmss = '';
+    if (arr.length == 2) {
+        hhmmss = hours + ':' + minutes + ':' + seconds + '.' + arr[1];
+    } 
+    // "12"
+    else if (arr.length == 1) {
+        hhmmss = hours + ':' + minutes + ':' + seconds + '.00';
+    }
+
+    return hhmmss;
 }
 
 function hhmmss2num(str) {
@@ -453,17 +469,13 @@ $( "#drag1" ).draggable({
         var newStart = (ui.position.left / ui.helper.parent().width()) * player.duration;
         range.start = newStart;
         
-        //make sure drag3 is in the selected range, or reset drag3 position to range.start
-        if (ui.position.left >= $('#progressInRange').position().left +  $('#progressInRange').width()) {
-            player.currentTime = range.start;
-        }
-
         //seek preview
         player_1.currentTime = range.start;
- 
-        $('#timeStart').val (num2hhmmss(newStart));
-        onRangeUpdate();
-        updateProgrssBar ();
+        $('#timeStart').val (time2hhmmss(newStart).substr(0,8));
+
+        maybeRevisePlayer();
+        replaceRange();
+        updateProgress ();
    },
     stop : function (e, ui) {
         console.log ('drag stop');
@@ -483,18 +495,14 @@ $( "#drag2" ).draggable({
 
         var newEnd = ((ui.position.left + ui.helper.width())/ ui.helper.parent().width()) * player.duration;
         range.end = newEnd;
-        
-        //make sure drag3 is in the selected range, or reset drag3 position to range.start
-        if (ui.position.left <= $('#progressInRange').position().left +  $('#progressInRange').width()) {
-            player.currentTime = range.end;
-        }
-
+           
         //seek preview
         player_2.currentTime = range.end;
+        $('#timeEnd').val (time2hhmmss(newEnd).substr(0,8));
 
-        $('#timeEnd').val (num2hhmmss(newEnd));
-        onRangeUpdate();
-        updateProgrssBar ();
+        maybeRevisePlayer();
+        replaceRange();
+        updateProgress ();
     },
 });
 
@@ -526,34 +534,19 @@ $( "#rangeBar" ).draggable({
         $('#drag1').css('left', ui.position.left - $('#drag1').width() / 2);
         $('#drag2').css('left', ui.position.left + ui.helper.width() - $('#drag2').width() / 2);
 
-        //range update
-        var newStart = (ui.position.left / ui.helper.parent().width()) * player.duration;
-        var newEnd = ((ui.position.left + ui.helper.width()) / ui.helper.parent().width()) * player.duration;
-        range.start = newStart;
-        range.end = newEnd;
-        $('#timeStart').val (num2hhmmss(newStart));
-        $('#timeEnd').val (num2hhmmss(newEnd));
-        player_1.currentTime = newStart;
-        player_2.currentTime = newEnd;
-
-        if (player.currentTime >= newEnd) {
-            player.currentTime = newEnd;
-        }
-
-        if (player.currentTime <= newStart) {
-            player.currentTime = newStart;
-        }
-
-        updateProgrssBar();  
+        updateRange();
+        maybeRevisePlayer();
+        updateProgress();  
     },
 });
-
 
 function slideRangeBar (direction) {
     if (!canPlay ()) return false;
     if (!player.paused) player.pause();
 
     var step = stepSlide;
+
+    //replace drag1,drag2
     if (direction === 'right') {
         if ($('#drag2').position().left + step + $('#drag2').width() >= $('#drag2').parent().width()) {
             step = $('#drag2').parent().width() - ($('#drag2').position().left +  $('#drag2').width());
@@ -561,7 +554,6 @@ function slideRangeBar (direction) {
 
         $('#drag1').css('left', $('#drag1').position().left + step);
         $('#drag2').css('left', $('#drag2').position().left + step);
-        $('#rangeBar').css('left', $('#rangeBar').position().left + step);
     } else if (direction === 'left') {
         if ($('#drag1').position().left - step <= 0) {
             step = $('#drag1').position().left;
@@ -569,57 +561,50 @@ function slideRangeBar (direction) {
 
         $('#drag1').css('left', $('#drag1').position().left - step);
         $('#drag2').css('left', $('#drag2').position().left - step);
-        $('#rangeBar').css('left', $('#rangeBar').position().left - step);
     }
 
-    //range update
-    var newStart = ($('#drag1').position().left / $('#drag1').parent().width()) * player.duration;
-    var newEnd = (($('#drag2').position().left + $('#drag2').width()) / $('#drag2').parent().width()) * player.duration;
-    range.start = newStart;
-    range.end = newEnd;
-    $('#timeStart').val (num2hhmmss(newStart));
-    $('#timeEnd').val (num2hhmmss(newEnd));
-    player_1.currentTime = newStart;
-    player_2.currentTime = newEnd;
-
-    if (player.currentTime >= newEnd) {
-        player.currentTime = newEnd;
-    }
-
-    if (player.currentTime <= newStart) {
-        player.currentTime = newStart;
-    }
-
-    updateProgrssBar();  
+    maybeRevisePlayer();
+    replaceRange();
+    updateRange();
+    updateProgress();  
 }
 
 $('#timeStart').on ('change', function (e) {
     console.log ('start time change');
 
     onRangeTimeUpdate ('timeStart', e.target.value);
-    onRangeUpdate();
 });
 
 $('#timeEnd').on ('change', function (e) {
     console.log ('end time change');
 
     onRangeTimeUpdate ('timeEnd', e.target.value);
-    onRangeUpdate();
 });
 
-function onRangeUpdate () {
+function replaceRange () {
     $('#rangeBar').css ('left', $('#drag1').position().left + $('#drag1').width() / 2);
     $('#rangeBar').css ('width', $('#drag2').position().left - $('#drag1').position().left + $('#drag2').width() / 2);
 }
 
+function updateRange () {
+    var newStart = ($('#drag1').position().left / $('#drag1').parent().width()) * player.duration;
+    var newEnd = (($('#drag2').position().left + $('#drag2').width()) / $('#drag2').parent().width()) * player.duration;
+    range.start = newStart;
+    range.end = newEnd;
+    $('#timeStart').val (time2hhmmss(newStart).substr(0,8));
+    $('#timeEnd').val (time2hhmmss(newEnd).substr(0,8));
+    player_1.currentTime = newStart;
+    player_2.currentTime = newEnd;
+}
+
 function onRangeTimeUpdate (elemId, val) {
-    if (!canPlay ()) return;
+    if (!canPlay ()) return false;
     if (!player.paused) player.pause();
 
     if (!isValidHHmmss (val)) {
         $('#timeModal .modal-body p').html('Wrong time code format!')
         $('#timeModal').modal ('show');
-        return;
+        return false;
     }
 
     var newTime = hhmmss2num(val)
@@ -628,7 +613,7 @@ function onRangeTimeUpdate (elemId, val) {
 
         $('#timeModal .modal-body p').html('Time code exceeded video length!')
         $('#timeModal').modal ('show');
-        return;
+        return false;
     }
 
     if (elemId === 'timeStart') {
@@ -637,10 +622,11 @@ function onRangeTimeUpdate (elemId, val) {
 
             $('#timeModal .modal-body p').html('Time start exceeded time end!')
             $('#timeModal').modal ('show');
-            return;
+            return false;
         }
 
         range.start = newTime;
+        player_1.currentTime = range.start;
     }
 
     if (elemId === 'timeEnd') {
@@ -649,14 +635,14 @@ function onRangeTimeUpdate (elemId, val) {
 
             $('#timeModal .modal-body p').html('Time end smaller than time start!')
             $('#timeModal').modal ('show');
-            return;
+            return false;
         }
     
         range.end = newTime;
+        player_2.currentTime = range.end;
     }
 
     $('#' + elemId).prop ('defaultValue', val);
-    player.currentTime = range.start;
     
     /*
         range.start          drag1.left
@@ -665,8 +651,23 @@ function onRangeTimeUpdate (elemId, val) {
     */
     $('#drag1').css('left', range.start * $('#drag1').parent().width() / player.duration);
     $('#drag2').css('left', range.end * $('#drag2').parent().width() / player.duration);
+
+    maybeRevisePlayer();
+    replaceRange();
+    updateProgress();
 }
 
+//make sure player time of drag3 is between the time ofdrag1 and drag2
+function maybeRevisePlayer ()
+{
+    if ($('#drag1').position().left >= $('#progressInRange').position().left +  $('#progressInRange').width()) {
+        player.currentTime = range.start;
+    }
+
+    if ($('#drag2').position().left <= $('#progressInRange').position().left +  $('#progressInRange').width()) {
+        player.currentTime = range.end;
+    }
+}
 
 function fullscreen () 
 {
@@ -690,7 +691,7 @@ function playNext () {
 }
 
 function preview (video) {
-    var alt = num2hhmmss(video.currentTime);
+    var alt = time2hhmmss(video.currentTime);
     var a = document.createElement("canvas");
     var ctx = a.getContext("2d");
     a.width = 200;;
