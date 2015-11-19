@@ -1,4 +1,5 @@
 var player = $('#player')[0];
+var player_1, player_2;
 var curMediaIndex = 0;
 var medias = [];
 var tags = [];
@@ -31,6 +32,19 @@ $('#input').on ('change', function (e) {
 
 player.onloadeddata = function () {
     tags = [];
+ 
+    $('#preview_1').children().remove();;
+    $('#preview_2').children().remove();;
+    
+    player_1 = player.cloneNode(true);
+    player_2 = player.cloneNode(true);
+    player_1.width=200;
+    player_2.width=200;
+    player_1.height=120;
+    player_2.height=120;
+    player_2.currentTime = player.duration;
+    $('#preview_1').append(player_1);
+    $('#preview_2').append(player_2);
     
     $('#videoFrameTable tbody tr').each (function (index, tr) {
         if (tr.children[0].innerHTML > 0) {
@@ -55,12 +69,18 @@ player.onloadeddata = function () {
 
     $('#rangeBar').css('left', 0).show();
     $('#rangeBar').css('width', $('#rangeBar').parent().width());
+    
+    $('#progressInRange').css('width',0).show();
 };
 
 player.ontimeupdate = function() { 
     if (player.currentTime >= range.end)
         player.pause();
 
+    updateProgrssBar ();
+};
+
+function updateProgrssBar () {
     /*
                     drag1                             drag2
                     |                                 |
@@ -88,11 +108,11 @@ player.ontimeupdate = function() {
 
 
     */
-
     //player
     var totalWidth = $('#drag3').parent().width();
     var newLeft = totalWidth * (player.currentTime - range.start) / (range.end - range.start); 
     newLeft = newLeft > totalWidth ? totalWidth : newLeft;
+    newLeft = newLeft < 0 ? 0 : newLeft;
     $('#drag3').css('left', newLeft);
 
     //progress bar in range
@@ -100,7 +120,7 @@ player.ontimeupdate = function() {
     var widthInRange = rangeWidth * (player.currentTime - range.start) / (range.end - range.start);
     $('#progressInRange').css('left', $('#drag1').position().left);
     $('#progressInRange').css('width', widthInRange);
-};
+}
 
 player.onpause = function() { 
     console.log("paused"); 
@@ -121,7 +141,6 @@ player.onplay = function () {
     
     updateSpeed (1.0);
     $('#speedOver').show ();
-    $('#progressInRange').show();
 };
 
 player.onplaying = function () {
@@ -222,7 +241,7 @@ function togglePlay () {
 $("#tag").bind("click", function(e) {
     e.preventDefault();
 
-    if (!canPlay ()) return;
+    if (!canPlay ()) return false;
 
     if (!player.paused) player.pause();
         
@@ -347,9 +366,9 @@ function resetDialog () {
 $("#export").bind("click", function(e) {
     e.preventDefault();
 
-    if (!canPlay()) return;
+    if (!canPlay()) return false;
 
-    download (JSON.stringify(tags), 'edl.json', 'application/json');
+    download (JSON.stringify(tags), medias[curMediaIndex].name + '_edl.json', 'application/json');
 });
 
 function download (content, filename, contentType) {
@@ -433,11 +452,19 @@ $( "#drag1" ).draggable({
 
         var newStart = (ui.position.left / ui.helper.parent().width()) * player.duration;
         range.start = newStart;
-        player.currentTime = newStart;
+        
+        //make sure drag3 is in the selected range, or reset drag3 position to range.start
+        if (ui.position.left >= $('#progressInRange').position().left +  $('#progressInRange').width()) {
+            player.currentTime = range.start;
+        }
 
+        //seek preview
+        player_1.currentTime = range.start;
+ 
         $('#timeStart').val (num2hhmmss(newStart));
         onRangeUpdate();
-    },
+        updateProgrssBar ();
+   },
     stop : function (e, ui) {
         console.log ('drag stop');
     }
@@ -456,10 +483,18 @@ $( "#drag2" ).draggable({
 
         var newEnd = ((ui.position.left + ui.helper.width())/ ui.helper.parent().width()) * player.duration;
         range.end = newEnd;
-        player.currentTime = range.start;
+        
+        //make sure drag3 is in the selected range, or reset drag3 position to range.start
+        if (ui.position.left <= $('#progressInRange').position().left +  $('#progressInRange').width()) {
+            player.currentTime = range.end;
+        }
+
+        //seek preview
+        player_2.currentTime = range.end;
 
         $('#timeEnd').val (num2hhmmss(newEnd));
         onRangeUpdate();
+        updateProgrssBar ();
     },
 });
 
@@ -498,8 +533,18 @@ $( "#rangeBar" ).draggable({
         range.end = newEnd;
         $('#timeStart').val (num2hhmmss(newStart));
         $('#timeEnd').val (num2hhmmss(newEnd));
+        player_1.currentTime = newStart;
+        player_2.currentTime = newEnd;
 
-        player.currentTime = newStart;
+        if (player.currentTime >= newEnd) {
+            player.currentTime = newEnd;
+        }
+
+        if (player.currentTime <= newStart) {
+            player.currentTime = newStart;
+        }
+
+        updateProgrssBar();  
     },
 });
 
@@ -534,8 +579,18 @@ function slideRangeBar (direction) {
     range.end = newEnd;
     $('#timeStart').val (num2hhmmss(newStart));
     $('#timeEnd').val (num2hhmmss(newEnd));
- 
-    player.currentTime = newStart;
+    player_1.currentTime = newStart;
+    player_2.currentTime = newEnd;
+
+    if (player.currentTime >= newEnd) {
+        player.currentTime = newEnd;
+    }
+
+    if (player.currentTime <= newStart) {
+        player.currentTime = newStart;
+    }
+
+    updateProgrssBar();  
 }
 
 $('#timeStart').on ('change', function (e) {
@@ -632,4 +687,23 @@ function playNext () {
     var url = URL.createObjectURL(medias[curMediaIndex]);
     player.src = url;
     player.play();
+}
+
+function preview (video) {
+    var alt = num2hhmmss(video.currentTime);
+    var a = document.createElement("canvas");
+    var ctx = a.getContext("2d");
+    a.width = 200;;
+    a.height = 120;
+    ctx.fillRect (0, 0, a.width, a.height);
+    ctx.drawImage (video, 0, 0, a.width, a.height);
+    var url = a.toDataURL("image/jpeg");
+    $("#videoFrameScreenshots ul").append(
+        '<li style="display:none;">' + 
+            '<a href="javascript:void(0);" class="thumbnail"><img src="' + url + '" alt="' + alt + '"/><p style="text-align:center">' + alt + '</p>' + 
+            '</a>' + 
+        '</li>').after(function() {
+            $("#videoFrameScreenshots li").fadeIn("500")
+        });
+    $("#videoFrameScreenshots").fadeIn("500");
 }
