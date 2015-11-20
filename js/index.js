@@ -38,14 +38,14 @@ player.onloadeddata = function () {
     
     player_1 = player.cloneNode(true);
     player_2 = player.cloneNode(true);
+    $('#preview_1').append(player_1);
+    $('#preview_2').append(player_2);
+ 
     player_1.width=200;
     player_2.width=200;
     player_1.height=120;
     player_2.height=120;
-    player_2.currentTime = player.duration;
-    $('#preview_1').append(player_1);
-    $('#preview_2').append(player_2);
-    
+   
     $('#videoFrameTable tbody tr').each (function (index, tr) {
         if (tr.children[0].innerHTML > 0) {
             $(tr).remove(); 
@@ -53,9 +53,6 @@ player.onloadeddata = function () {
     });
  
     $(player).css ('background','white');
-
-    range.start = 0;
-    range.end = player.duration;
 
     $('#timeStart').val('00:00:00');
     $('#timeEnd').val(time2hhmmss(player.duration).substr(0,8));
@@ -71,7 +68,17 @@ player.onloadeddata = function () {
     $('#rangeBar').css('width', $('#rangeBar').parent().width());
     
     $('#progressInRange').css('width',0).show();
+
+    updateRange();
 };
+
+player.oncanplaythrough = function () {
+    console.log('player.canplaythrough');
+}
+
+player.oncanplay = function () {
+    console.log('player.canplay');
+}
 
 player.ontimeupdate = function() { 
     if (player.currentTime >= range.end)
